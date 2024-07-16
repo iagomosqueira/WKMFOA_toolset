@@ -62,7 +62,10 @@ plot(om, advice)
 
 library(future.apply)
 
-runs <- future_lapply(setNames(c(1, 2, 3, 5), nm=paste0("freq", c(1, 2, 3, 5))), function(x) mp(om, ctrl=arule, args=list(iy=2024, frq=x)))
+system.time(
+runs <- FLmses(future_lapply(setNames(nm=c(1,2,3,5)), function(x)
+  mp(om, ctrl=arule, args=list(iy=2024, fy=2050, frq=x))))
+)
 
 # --- SAVE
 

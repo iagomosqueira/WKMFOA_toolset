@@ -282,6 +282,7 @@ tac.is <- function(stk, ctrl, args, output="catch", recyrs=-2,
       list(year=seq(ay - data_lag + 1, length=management_lag), quant="fbar",
         value=rep(c(fsq), management_lag)),
       # target
+                        # TODO: 2025 and 2026 same
       list(year=cys, quant="fbar", value=c(ftar))
     )
 

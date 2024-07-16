@@ -14,7 +14,7 @@ library(mse)
 library(FLSRTMB)
 
 # CHOOSE number of cores for doFuture / doParallel
-cores <- 3
+cores <- 2
 
 source("utilities.R")
 
@@ -28,7 +28,7 @@ dy <- dims(run)$maxyear
 iy <- dy + 1
 
 # FINAL year
-fy <- 2042
+fy <- 2050
 
 # NUMBER of iterations
 it <- 500
