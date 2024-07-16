@@ -20,15 +20,10 @@ source("utilities.R")
 # LOAD oem and oem
 load('data/data.rda')
 
-# - RUN for F=0 as reference
-
-runf0 <- fwd(om, control=fwdControl(year=seq(2024, 2042), quant="fbar",
-  value=0))
-
 # - SET UP MP runs
 
 # SET intermediate year + start of runs, lags and frequency
-mseargs <- list(iy=2023, fy=2042, data_lag=1, management_lag=1, frq=1)
+mseargs <- list(iy=2024, fy=2042, data_lag=1, management_lag=1, frq=1)
 
 # SETUP standard ICES advice rule
 arule <- mpCtrl(list(
@@ -54,11 +49,29 @@ plot_hockeystick.hcr(arule$hcr, labels=c(lim="Blim", trigger="MSYBtrigger",
 
 # - RUN applying ICES advice rule
 system.time(
-  advice <- mp(om, iem=iem, ctrl=arule, args=mseargs)
+  advice <- mp(om, ctrl=arule, args=mseargs)
 )
 
 # PLOT
-plot(runf0, advice, window=FALSE)
+plot(om, advice)
+
+
+# --- RUN over alternative advice frequencies (2, 3, 5)
+
+# TODO: MOVE to mps()
+
+library(future.apply)
+
+runs <- future_lapply(setNames(c(1, 2, 3, 5), nm=paste0("freq", c(1, 2, 3, 5))), function(x) mp(om, ctrl=arule, args=list(iy=2024, frq=x)))
+
+# --- SAVE
+
+save(runs, advice, file="model/model.rda", compress="xz")
+
+# CLOSE cluster
+plan(sequential)
+
+# ----- STOP here!
 
 
 # --- MP runs changing slope and min F (AR_Steep + F below Blim)
@@ -73,6 +86,8 @@ system.time(
   plans <- mps(om, ctrl=arule, args=mseargs, hcr=opts)
 )
 
+# BUG:
+plans <- mps(om, ctrl=arule, args=list(iy=2023, fy=2042, data_lag=1, management_lag=1, frq=c(1, 2, 3)))
 
 # --- MP runs with TAC change limits
 
@@ -96,10 +111,4 @@ system.time(
 )
 
 
-# --- SAVE
 
-save(runf0, advice, plans, plans_lim, plans_fr,
-  file="model/model.rda", compress="xz")
-
-# CLOSE cluster
-plan(sequential)
