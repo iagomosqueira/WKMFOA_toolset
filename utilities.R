@@ -35,11 +35,11 @@ annualstats <- list(
     desc="Probability that spawner biomass is above Btrigger"),
 
   # mean(C)
-  C=list(~iterMeans(C), name="mean(C)",
+  Cy=list(~iterMeans(C), name="mean(C)",
     desc="Mean catch per year"),
 
   # cv(C)
-  cvC=list(~sqrt(iterVars(C)) / iterMeans(C), name="cv(C)",
+  cvCy=list(~sqrt(iterVars(C)) / iterMeans(C), name="cv(C)",
     desc="CV of catch per year")
 )
 
@@ -62,11 +62,7 @@ fullstats <- list(
   # P(SB < SBlim) at least once
   risk2=list(~yearMeans(iterMeans(((SB/Blim) < 1) > 0)),
     name="once(P(SB<B[limit]))",
-    desc="ICES Risk 2, probability that spawner biomass is above Blim once"),
-
-  # 1st year
-  firstyear=list(~firstYear(iterMeans(SB/Blim > 1) >= 0.95),
-  name="recovery", desc="First year in which P(SB/SBlim) >= 0.95")
+    desc="ICES Risk 2, probability that spawner biomass is above Blim once")
 )
 
 # }}}

@@ -67,9 +67,29 @@ runs <- FLmses(future_lapply(setNames(nm=c(1,2,3,5)), function(x)
   mp(om, ctrl=arule, args=list(iy=2024, fy=2050, frq=x))))
 )
 
+# ----- BUG:
+
+plan(sequential)
+plan(multicore, workers=3)
+plan(multisession, workers=3)
+
+system.time(
+  advice <- mp(om, ctrl=arule, args=list(iy=2024, fy=2026))
+)
+
+system.time(
+runs <- FLmses(future_lapply(setNames(nm=c(1,2,3)), function(x)
+  mp(om, ctrl=arule, args=list(iy=2024, fy=2026, frq=x), parallel=FALSE)))
+)
+# ----/
+
 # --- SAVE
 
 save(runs, advice, file="model/model.rda", compress="xz")
+system.time(
+  advice <- mp(om, ctrl=arule, args=mseargs)
+)
+
 
 # CLOSE cluster
 plan(sequential)

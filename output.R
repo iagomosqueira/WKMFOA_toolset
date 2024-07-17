@@ -18,10 +18,13 @@ source("utilities.R")
 
 load("model/model.rda")
 
-# COMPUTE yearly performance statistics, ADD F0 as reference
+# COMPUTE performance statistics
 
-performance(runs) <- performance(runs, statistics=annualstats,
-  years=list(short=2024:2034, all=2024:2042))
+performance(runs) <- rbind(
+  # annual
+  performance(runs, statistics=annualstats, years=2024:2042),
+  # by period
+  performance(runs, statistics=fullstats, years=list(all=2024:2042)))
 
 
 # --- TABLES
