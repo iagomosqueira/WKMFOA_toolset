@@ -13,17 +13,15 @@ mkdir("model")
 library(mse)
 
 # CHOOSE number of cores for doFuture
-cores <- 2
-
-source("utilities.R")
+plan(multisession, workers=4)
 
 # LOAD oem and oem
 load('data/data.rda')
 
 # - SET UP MP runs
 
-# SET intermediate year + start of runs, lags and frequency
-mseargs <- list(iy=2024, fy=2042, data_lag=1, management_lag=1, frq=1)
+# SET intermediate year, other args as default
+mseargs <- list(iy=2024)
 
 # SETUP standard ICES advice rule
 arule <- mpCtrl(list(
@@ -56,82 +54,28 @@ system.time(
 plot(om, advice)
 
 
-# --- RUN over alternative advice frequencies (2, 3, 5)
-
-# TODO: MOVE to mps()
+# --- RUN over alternative advice frequencies (1, 2, 3, 5)
 
 library(future.apply)
 
+# TODO: MOVE to mps()
 system.time(
-runs <- FLmses(future_lapply(setNames(nm=c(1,2,3,5)), function(x)
-  mp(om, ctrl=arule, args=list(iy=2024, fy=2050, frq=x))))
+runs <- FLmses(future_lapply(setNames(nm=c(1, 2, 3, 5)), function(x)
+  mp(om, ctrl=arule, args=list(iy=2024, fy=2050, frq=x), parallel=FALSE)))
 )
 
-# ----- BUG:
+plot(window(om, start=2000), runs)
 
-plan(sequential)
-plan(multicore, workers=3)
-plan(multisession, workers=3)
+# COMPUTE performance statistics
 
-system.time(
-  advice <- mp(om, ctrl=arule, args=list(iy=2024, fy=2026))
-)
+performance(runs) <- rbind(
+  # annual
+  performance(runs, statistics=annualstats, years=2024:2042),
+  # by period
+  performance(runs, statistics=fullstats, years=list(all=2024:2042)))
 
-system.time(
-runs <- FLmses(future_lapply(setNames(nm=c(1,2,3)), function(x)
-  mp(om, ctrl=arule, args=list(iy=2024, fy=2026, frq=x), parallel=FALSE)))
-)
-# ----/
-
-# --- SAVE
-
-save(runs, advice, file="model/model.rda", compress="xz")
-system.time(
-  advice <- mp(om, ctrl=arule, args=mseargs)
-)
-
+# SAVE
+save(runs, file="model/model.rda", compress="xz")
 
 # CLOSE cluster
 plan(sequential)
-
-# ----- STOP here!
-
-
-# --- MP runs changing slope and min F (AR_Steep + F below Blim)
-
-# CREATE combinations of lim(Blim) and min(Fmin) values.
-opts <- combinations(
-  lim=seq(0, c(refpts(om)$Btrigger) * 0.50, length=3),
-  min=c(0, 0.05))
-
-# RUN for all options on 'hcr' control element
-system.time(
-  plans <- mps(om, ctrl=arule, args=mseargs, hcr=opts)
-)
-
-# BUG:
-plans <- mps(om, ctrl=arule, args=list(iy=2023, fy=2042, data_lag=1, management_lag=1, frq=c(1, 2, 3)))
-
-# --- MP runs with TAC change limits
-
-#
-args(arule$isys)[c('dtaclow', 'dtacupp')] <- c(0.85, 1.15)
-
-# RUN for all options on 'hcr' control element
-system.time(
-  plans_lim <- mps(window(om, start=2020), ctrl=arule, args=mseargs, hcr=opts)
-)
-
-
-# --- MP runs with fleet response to TAC decrease, keeps effort at 90%
-
-# SET fleet behaviour response to TAC, !F_y < 0.90 * F_y-1
-fleetBehaviour(om) <- mseCtrl(method=response.fb, args=list(min=0.90))
-
-# RUN for all options on 'hcr' control element
-system.time(
-  plans_fr <- mps(om, ctrl=arule, args=mseargs, hcr=opts)
-)
-
-
-

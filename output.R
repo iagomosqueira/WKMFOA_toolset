@@ -18,54 +18,53 @@ source("utilities.R")
 
 load("model/model.rda")
 
-# COMPUTE performance statistics
-
-performance(runs) <- rbind(
-  # annual
-  performance(runs, statistics=annualstats, years=2024:2042),
-  # by period
-  performance(runs, statistics=fullstats, years=list(all=2024:2042)))
-
 
 # --- TABLES
 
 tables <- list()
+perf <- performance(runs)
 
-# WHEN does stock recover (P(SB>Blim) >= 95%) by mp?
+# IS P(SB < Blim) > 0.95 in any year?
 
-tables$recovery <- perf_year[statistic == "PBlim" & data > 0.95, .SD[1], 
-  by=mp][order(year),]
+perf[statistic == 'PBlim', .(PBlim=max(data)), by=.(mp)]
 
-perf[statistic=='firstyear' & year == 'all', data, by=.(mp)][order(data),]
+# WHAT are the yearly average catch levels?
 
-# WHEN is P(B>Btrigger) > 50% by mp?
-
-tables$status <- perf_year[statistic == "PBtrigger" & data > 0.50, .SD[1],
-  by=mp]
-
-# CREATE table of catch by mp and year (mp ~ year | C)
-
-tables$catch_mp <- dcast(perf_year[statistic == 'C', .(data=mean(data)),
+tables$catch_mp <- dcast(perf[statistic == 'Cy', .(data=mean(data)),
   by=.(year, mp, name, desc)], mp ~ year, value.var='data')
+
+# WHAT are the long-term catch levels?
+
+# WHAT is the catch variability?
+
+  dcast(perf[statistic == 'AAVC', .(data=mean(data)),
+  by=.(year, mp, name, desc)], mp ~ year, value.var='data')
+
+# WHAT is the catch variability?
+
+  dcast(perf[statistic == 'IACC', .(data=mean(data)),
+  by=.(year, mp, name, desc)], mp ~ year, value.var='data')
+
 
 # CREATE table of all statistics by mp and year (statistic + mp ~ year)
 
-tables$stats_mp <- dcast(perf_year[, .(data=mean(data)),
+tables$stats_mp <- dcast(perf[, .(data=mean(data)),
   by=.(year, mp, name, desc)], name + mp ~ year, value.var='data')
+
+# SAVE
+save(tables, file="output/output.rda", compress="xz")
+
+
+
 
 
 # --- TRACK decisions (EXAMPLES)
 
 # TRACK decision for a single iter
 
-decisions(advice, year=2024:2026, iter=1)
+decisions(runs[[1]], year=2024:2026, iter=1)
 plot(iter(om, 1), iter(advice,1))
 
-decisions(advice, year=2024:2026, iter=2)
-plot(iter(om, 2), iter(advice, 2))
-
 # TRACK decisions for multiple years and all iters
-decisions(advice)
+decisions(runs[[1]])
 
-# SAVE
-save(perf_year, perf, tables, file="output/output.rda", compress="xz")
