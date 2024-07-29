@@ -22,7 +22,7 @@ opts_chunk$set(
 
 The latest version of the required [FLR](https:://flr-project.org) packages, and all their dependencies, can be installed from the [FLR R-universe page](https://flr.r-universe.dev) by calling:
 
-```r
+```{r}
 install.packages("icesTAF")
 
 install.packages(icesTAF::deps(), repos=c(
@@ -32,7 +32,7 @@ install.packages(icesTAF::deps(), repos=c(
 
 They can also be installed from the source code in the [FLR github repositories](https://github.com/flr) by calling
 
-```r
+```{r}
 remotes::install_github(paste0("flr/", c("FLCore", "ggplotFL", "FLFishery", "FLasher", "FLSRTMB", "mse", "mseviz")))
 ```
 
@@ -42,7 +42,7 @@ remotes::install_github(paste0("flr/", c("FLCore", "ggplotFL", "FLFishery", "FLa
 
 The [mse](https://flr-project.org/mse) package allows setting up notifications of process on long computations through [progressr](https://progressr.futureverse.org/). You can request a progress bar to be shown for the calls to the `mp()`, `mps()` nd `bootstrapSR` functions in this way
 
-```r
+```{r}
 library(progressr)
 handlers(global=TRUE)
 handlers("progress")
@@ -60,11 +60,11 @@ The number of cores to use should be chosen by considering the available memory.
 
 Once the repository has been cloned, only two steps are necessary to test run the example code, once `icesTAF` has been loaded:
 
-```r
+```{r}
 library(icesTAF)
 
-# RUN the repository bootstrap steps (data)
-taf.bootstrap()
+# RUN the repository boot steps (data)
+taf.boot()
 
 # SOURCE all R scripts in order
 make.all()
@@ -77,7 +77,7 @@ make.all()
 A new repository should contain the following folder and tree structure, which includes only initial data files, the corresponding `DATA.bib` file, a BibTeX file with relevant bibliographic references, and the scripts that will run the analysis. These are set based on the example dataset, sol.27.4, and will need to be adapted for a different stock.
 
 ```
-|-- bootstrap
+|-- boot
 |   |-- initial
 |   |   `-- data
 |   |       `-- sol274.rda  - Input dataset
@@ -94,17 +94,17 @@ A new repository should contain the following folder and tree structure, which i
 
 ![](https://user-images.githubusercontent.com/1029847/249617706-e37724ad-f4a8-47d6-a481-c115cefd8b3b.png)
 
-## bootstrap/initial
+## boot/initial
 
 The essential inputs for the analysis include the result of the stock assessment model fit and the current set of reference points.
 
-For example, `bootstrap/initial/data/sol274.rda` contains the following objects:
+For example, `boot/initial/data/sol274.rda` contains the following objects:
 
 - `run`: The latest AAP stock assessment for sol.27.4 (WGNSSK 2023), as an object or class `FLStock`. The object does not reflect the WGNSSK 2023 sol.27.4 assessment, as it has been artificially depleted for demonstration purposes.
 
 - `refpts`: An object of class `FLPar` containing the reference points, biological and operational, calculated for this stock in the last benchmark (ICES, 2020).
 
-Uncertainty in past dynamics and initial conditions might have been already quantified, for example by employing the McMC sampling procedure available in the stock assessment model, by bootstrap of model inputs, or through a ensemble of model fits. If that is the case, the conditioning steps in `data.R` should be adapted accordingly. 
+Uncertainty in past dynamics and initial conditions might have been already quantified, for example by employing the McMC sampling procedure available in the stock assessment model, by boot of model inputs, or through a ensemble of model fits. If that is the case, the conditioning steps in `data.R` should be adapted accordingly. 
 
 # OM conditioning, `data.R`
 
@@ -112,7 +112,7 @@ From the stock assessment run, or a set of chosen ensemble runs, an operating mo
 
 First, one or multiple stock-recruitment relationships are fitted to the data, and then to bootstrapped series of the stock-recruits pairs, following the approach applied in ICES to category 1 stocks [@ICESrefpts_2022].
 
-```r
+```{r}
 fits <- srrTMB(as.FLSRs(run, models=c("bevholt", "segreg")), 
   spr0=mean(spr0y(run)))
 
@@ -124,14 +124,14 @@ Models are fitted by the `r ``srrTMB` function in package [FLSRTNB](https://flr-
 
 An `FLom` object can now be assembled. This is the *FLR* representation of an operating model for a single stock and fishery, and contains all that is required for projecting the stock forward under different management regimes.
 
-```r
+```{r}
 om <- FLom(stock=propagate(run, it), refpts=refpts, model='mixedsrr',
   params=srpars, deviances=srdevs)
 ```
 
 This call builds the object with the initial population (*run*), propagated or replicated for the desired number of iterations (*it*), the matching biological reference points (*refpts*), the SRR to be applied and the set of parameters obtained from the bootstrap step (*model* and *params*), and the deviances to apply over the future recruitment estimates. These have been generated in this case following a log-normal distribution, with variance and autocorrelation computed from the bootstrap analysis.
 
-```r
+```{r}
 srdevs <- rlnormar1(sdlog=srpars$sigmaR, rho=srpars$rho, years=seq(dy, fy))
 ```
 
@@ -141,13 +141,13 @@ include_graphics("report/om_deviances.png")
 
 The OM can now be extended until the final year (*fy*). The default call to `fwdWindow()` sets both future biology (weights, maturity and natural mortality) and fishery dynamics (selectivity and discards ratio) to remain as the average of the last 3 years in the model run
 
-```r
+```{r}
 om <- fwdWindow(om, end=fy)
 ```
 
 Other options exist for determining future values and patterns in any assumed quantity. For example, values can be resampled from a number of recent years, or different number of years can be used to compute the future average values. For example, this alternative call found the *trove.R* file, uses an averages of the last five years, except for weights-at-age, in stock, landings, discards and catch, which are instead resampled over the same period. Future values in the *om* object can also be modified directly.
 
-```r
+```{r}
 om <- fwdWindow(window(om, end=2023), end=fy, nsq=5,
   fun=c("mean", wt="sample"))
 ```
@@ -156,7 +156,7 @@ The following MP runs do not include any error or bias in observations (catch an
 
 Implementation error can also be incorporated in the evaluation of MPs. An object is assembled containing the choice of implementation dynamics and the levels of error. An approximate 10% error in implementation can be added, for example, through a LN(0, 0.10) distribution as follows.
 
-```r
+```{r}
 iem <- FLiem(method=noise.iem,
   args=list(noise=rlnorm(500, rec(om) %=% 0, 0.1)))
 ```
@@ -166,7 +166,7 @@ iem <- FLiem(method=noise.iem,
 
 To construct a baseline level for comparing the candidate recovery procedures, a projection under a full fishery closure ($\bar{F} = 0$) can be carried out.
 
-```r
+```{r}
 runf0 <- fwd(om, control=fwdControl(year=seq(2024, 2042), quant="fbar",
   value=0))
 ```
@@ -185,7 +185,7 @@ Recovery rules, or any other management procedure (MP), are composed of a number
 
 These three steps are specified in a control structure, as follows:
 
-```r
+```{r}
 arule <- mpCtrl(list(
   # shortcut.sa + SSBdevs
   est = mseCtrl(method=shortcut.sa,
@@ -207,13 +207,13 @@ include_graphics("report/advice_hcr.png")
 
 Applying the MP specified by such a control structure requires a call to the *mp()* function with the OM, OEM and control objects as main arguments. Only one extra argument is required, a list containing at least the starting year of the simulation (*iy*). By default the simulation will run to the last year of the 'om' object (*fy*), on an annual basis (*frq*), and with one year of lag in both data (*data_lag*) and decision implementation (*management_lag*). Running an MP that sets advice for a three-year period, for example, only requires passing the corresponding value in the list, `r  list(iy=2023, frq=3)`.
 
-```r
+```{r}
 mseargs <- list(iy=2023, fy=2042, data_lag=1, management_lag=1, frq=1)
 ```
 
 We now proceed to run the MP applying on the ICES advice rule and a shortcut approach to the stock assessment.
 
-```r
+```{r}
 advice <- mp(om, iem=iem, ctrl=arule, args=mseargs)
 ```
 
@@ -244,14 +244,14 @@ units:  NA
 
 A set of runs can now be conducted in which the standard advice rule is modified in various ways. For example, a range of values are explored for the *lim* argument: the level of the input metric (SSB in this case) at which the output (F) is set to the *min* value. Five between 0 and the value of *Blim* for sol.27.4 were chosen in this example. To run these alternative MPs, the 'mps' function takes the same arguments as a call for a single MP, but also a list of alternative values for one of more of the HCR arguments, for example
 
-```r
+```{r}
 limopts <- mps(om, ctrl=arule, args=mseargs,
   hcr=list(lim=seq(0, c(refpts(om)$Blim), length=5)))
 ```
 
 Combinations of alternative arguments can be specified more easily by calling the `combinations` function, for example
 
-```r
+```{r}
 opts <- combinations(
   lim=seq(0, c(refpts(om)$Btrigger) * 0.50, length=3),
   min=c(0, 0.05))
@@ -259,7 +259,7 @@ opts <- combinations(
 
 This list can now be used in the call to `mps()` to evaluate the resulting six MPs.
 
-```r
+```{r}
 plans <- mps(om, ctrl=arule, args=mseargs, hcr=opts)
 ```
 
@@ -358,9 +358,9 @@ For a number of steps shown in the example analysis, alternatives already exist 
 
 Once an analysis is running, the mechanisms of TAF should be used to keep track of what package versions were used. This ensures the reproducibility of the whole analysis.
 
-If packages have been installed from the [FLR github](https://github.com/flr) repositories, the `bootstrap/SOFTWARE.bib` file storing all version info can be created by calling
+If packages have been installed from the [FLR github](https://github.com/flr) repositories, the `boot/SOFTWARE.bib` file storing all version info can be created by calling
 
-```r
+```{r}
 flrpkgs <- c("FLCore", "FLFishery", "FLasher", "mse", "ggplotFL",
   "mseviz", "FLSRTMB")
 
@@ -369,7 +369,7 @@ icesTAF::draft.software(flrpkgs, file=TRUE)
 
 If packages have been installed from [r-universe](https://flr.r-universe.dev), we can add the version information using the following (experimental) code.
 
-```r
+```{r}
 
 flrpkgs <- c("FLCore", "FLFishery", "FLasher", "mse", "ggplotFL",
   "mseviz", "FLSRTMB")
@@ -387,7 +387,7 @@ file <- file.path(boot.dir(), "SOFTWARE.bib")
 write(unlist(bib), file=file, append=FALSE)
 ```
 
-The `SOFTWARE.bib` file now contains the github commit references to the package versions that were installed via the [FLR r-universe](https://flr.r-universe.dev) repository. A call to `icesTAF::taf.bootstrap(software=TRUE)` would download and install those precise versions in the `bootstrap` folder. The file will also be used by the TAF server in ICES to use the same versions when running the code.
+The `SOFTWARE.bib` file now contains the github commit references to the package versions that were installed via the [FLR r-universe](https://flr.r-universe.dev) repository. A call to `icesTAF::taf.boot(software=TRUE)` would download and install those precise versions in the `boot` folder. The file will also be used by the TAF server in ICES to use the same versions when running the code.
 
 # Asking for help
 
