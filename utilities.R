@@ -82,7 +82,7 @@ pefwd <- function(object, catch=NULL, fbar = NULL, deviances = NULL, sr = NULL  
   hiny <- dims(catch)$minyear; print(paste0("hiny = ", hiny))
 
   # DETERMINISTIC SEQUENTIAL hindcast with process error (perr) added ----
-      # COMPUTE process error, e = y/(x exp(-z)) all ages except recruitment. (ask Iago if correct..., becasue no the deviance do not have an effect)
+      # COMPUTE process error, e = y/(x exp(-z)) all ages except recruitment.
       perr <- stock.n(stock)[-1, ac(hiny:dy)]/(stock.n(stock)[-nages, ac(hiny:dy-1)] * 
                   exp(-z(stock)[-nages, ac(hiny:dy-1)]))
       perr[ac(dims(stock)$max), ] <- stock.n(stock)[nages, ac(hiny:dy)]/(quantSums(stock.n(stock)[(nages-1):nages, ac(hiny:dy -1)] *
@@ -103,7 +103,7 @@ pefwd <- function(object, catch=NULL, fbar = NULL, deviances = NULL, sr = NULL  
 
         # perr for next year
         if(Y < dy){
-          # all ages - recruitment
+          # all ages minus recruitment
           perry[,ac(Y+1)] <- stock.n(stock)[-1, ac(Y+1)]/(stock.n(dhind_perr)[-nages, ac(Y)] * exp(-z(dhind_perr@stock)[-nages, ac(Y)]))
           # correct plusgroup
           perry[ac(dims(stock)$max),ac(Y+1)] <- stock.n(stock)[nages, ac(Y+1)]/(quantSums(stock.n(dhind_perr)[(nages-1):nages, ac(Y)] *

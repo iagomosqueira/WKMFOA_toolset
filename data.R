@@ -12,6 +12,7 @@ mkdir("data")
 
 library(mse)
 library(FLSRTMB)
+source("utilities.R")
 
 # CHOOSE number of cores for doFuture
 plan(multisession, workers=4)
