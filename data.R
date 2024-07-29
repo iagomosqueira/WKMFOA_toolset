@@ -12,12 +12,13 @@ mkdir("data")
 
 library(mse)
 library(FLSRTMB)
+source("utilities.R")
 
 # CHOOSE number of cores for doFuture
 plan(multisession, workers=4)
 
 # LOAD SS3 SA results, 2024 ICES WGNSSK sol.27.4
-load('boot/data/sol274.rda')
+load('boot/data/sol274.rda', verbose =TRUE)
 
 # DATA year
 dy <- dims(run)$maxyear
@@ -62,8 +63,11 @@ plot(srdevs) +
 om <- FLom(stock=propagate(run, it), refpts=refpts, model='bevholtss3',
   params=params(srr), deviances=srdevs)
 
-# HINDCAST for last 10 years
-om <- fwd(om, catch=catch(om)[, ac(2014:2023)], sr=rec(om)[, ac(2014:2023)])
+# HINDCAST for last 10 years /without process error
+# om <- fwd(om, catch=catch(om)[, ac(2014:2023)], sr=rec(om)[, ac(2014:2023)])
+
+# HINDCAST for last 10 years /w process error and recruitment deviances
+om <- pefwd(om, catch=catch(om)[, ac(2014:2023)], sr=rec(om)[, ac(2014:2023)], deviances = srdevs)
 
 # SETUP om future: average of last 3 years **
 om <- fwdWindow(om, end=fy)
@@ -80,3 +84,4 @@ sdevs <- shortcut_devs(om, Fcv=0.212, Fphi=0.423, SSBcv=0.10)
 # - SAVE
 
 save(om, sdevs, file="data/data.rda", compress="xz")
+

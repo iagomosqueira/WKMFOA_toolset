@@ -22,7 +22,7 @@ iy <- 2024
 
 # SRR fits and bootstrap
 
-load('data/bootstrap.rda')
+load('data/bootstrap.rda', verbose = TRUE)
 
 taf.png(file="data_srrfits.png")
 plotsrs(fits)
@@ -34,7 +34,7 @@ dev.off()
 
 # OM
 
-load('data/data.rda')
+load('data/data.rda', verbose = TRUE)
 
 taf.png("om_metrics.png")
 plot(window(om, end=iy)) +
@@ -58,7 +58,15 @@ dev.off()
 
 # --- MPs (model.R)
 
-load("model/model.rda")
+load("model/model.rda", verbose = TRUE)
+
+
+runf0 <- fwd(om, control=fwdControl(year=seq(2024, 2050), quant="fbar",
+                                    value=0))
+
+taf.png("run_f0.png")
+plot(runf0)
+dev.off()
 
 # ADVICE rule run
 taf.png("model_advice_relative.png")
@@ -85,19 +93,19 @@ dev.off()
 
 # --- Performance (output.R)
 
-load("output/output.rda")
+load("output/output.rda", verbose = TRUE)
 
 # PLOT long term performance
 taf.png("perf_bps.png")
 plotBPs(perf[year=='all']) + ylim(c(0, NA))
-plotBPs(perf[year=='long']) + ylim(c(0, NA))
+#plotBPs(perf[year=='long']) + ylim(c(0, NA))
 dev.off()
 
-plotBPs(perf[year=='short'], statistics=c("AAVC", "C", "risk2")) +
-  ylim(c(0, NA))
-
-plotBPs(perf[year=='medium'], statistics=c("AAVC", "C", "risk2")) +
-  ylim(c(0, NA))
+# plotBPs(perf[year=='short'], statistics=c("AAVC", "C", "risk2")) +
+#   ylim(c(0, NA))
+# 
+# plotBPs(perf[year=='medium'], statistics=c("AAVC", "C", "risk2")) +
+#   ylim(c(0, NA))
 
 # PLOT trade-offs
 
