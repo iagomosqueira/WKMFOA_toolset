@@ -72,7 +72,7 @@ om <- fwdWindow(om, end=fy)
 om <- fwd(om, catch=FLQuant(3675, dimnames=list(year=2024)))
 
 # TODO: ADD constant F
-om <- fwd(om, fbar=expand(fbar(run)[,'2023'], year=2024))
+# om <- fwd(om, fbar=expand(fbar(run)[,'2023'], year=2024))
 
 # CREATE F and SSB deviances
 sdevs <- shortcut_devs(om, Fcv=0.212, Fphi=0.423, SSBcv=0.10)

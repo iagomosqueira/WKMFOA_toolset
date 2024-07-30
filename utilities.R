@@ -23,7 +23,7 @@ icesmetrics <- list(FMSY=fbar~Fmsy, SBMSY=ssb~Btrigger,
 annualstats <- list(
 
   # P(SB>SBlim)
-  PBlim=list(~iterMeans((SB/Blim) > 1), name="P(SB>SB[lim])",
+  PBlim=list(~iterMeans((SB/Blim) > 0), name="P(SB>SB[lim])",
     desc="Probability that spawner biomass is above Blim"),
 
   # P(SB>SBtrigger)

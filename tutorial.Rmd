@@ -1,5 +1,5 @@
 ---
-title: "FLR toolset for evaluating recovery plans for ICES WKREBUILD2"
+title: "FLR toolset for evaluating multi-annual management plans for ICES WKMFOA"
 author: "Iago MOSQUEIRA (WMR) <iago.mosqueira@wur.nl"
 date: "`r format(Sys.time(), '%d %B %Y')`"
 output: tint::tintHtml
@@ -40,7 +40,7 @@ remotes::install_github(paste0("flr/", c("FLCore", "ggplotFL", "FLFishery", "FLa
 
 ## Progress reporting
 
-The [mse](https://flr-project.org/mse) package allows setting up notifications of process on long computations through [progressr](https://progressr.futureverse.org/). You can request a progress bar to be shown for the calls to the `mp()`, `mps()` nd `bootstrapSR` functions in this way
+The [mse](https://flr-project.org/mse) package allows setting up notifications of process on long computations through [progressr](https://progressr.futureverse.org/). You can request a progress bar to be shown for the calls to the `mp()`, `mps()` and `bootstrapSR` functions in this way
 
 ```r
 library(progressr)
@@ -80,7 +80,7 @@ A new repository should contain the following folder and tree structure, which i
 |-- bootstrap
 |   |-- initial
 |   |   `-- data
-|   |       `-- sol274.rda  - Input dataset
+|   |       `-- sol274.rda  - Example input dataset
 |   |-- references.bib
 |   `-- DATA.bib
 |-- data.R -  Operating Model conditioning
