@@ -2,14 +2,23 @@
 title: "FLR toolset for evaluating multi-annual management plans for ICES WKMFOA"
 author: "Iago MOSQUEIRA (WMR) <iago.mosqueira@wur.nl"
 date: "`r format(Sys.time(), '%d %B %Y')`"
-output: tint::tintHtml
+output:
+  html_document:
+    code_folding: show
+    fig_caption: yes
+    number_sections: yes
+    theme: readable
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+
 license: Creative Commons Attribution-ShareAlike 4.0 International Public License
 ---
 
 ```{r knitr, include = FALSE}
 library(knitr)
 opts_chunk$set(
-  eval=TRUE,
+  eval=FALSE,
   message=FALSE,
   warning=FALSE,
   collapse = TRUE,
@@ -22,18 +31,18 @@ opts_chunk$set(
 
 The latest version of the required [FLR](https:://flr-project.org) packages, and all their dependencies, can be installed from the [FLR R-universe page](https://flr.r-universe.dev) by calling:
 
-```r
-install.packages("icesTAF")
+```{r}
+ install.packages("icesTAF")
 
-install.packages(icesTAF::deps(), repos=c(
-  FLR="https://flr.r-universe.dev",
-  CRAN="https://cloud.r-project.org/"))
+ install.packages(icesTAF::deps(), repos=c(
+   FLR="https://flr.r-universe.dev",
+   CRAN="https://cloud.r-project.org/"))
 ```
 
 They can also be installed from the source code in the [FLR github repositories](https://github.com/flr) by calling
 
-```r
-remotes::install_github(paste0("flr/", c("FLCore", "ggplotFL", "FLFishery", "FLasher", "FLSRTMB", "mse", "mseviz")))
+```{r}
+ remotes::install_github(paste0("flr/", c("FLCore", "ggplotFL", "FLFishery", "FLasher", "FLSRTMB", "mse", "mseviz")))
 ```
 
 # Setup
@@ -42,7 +51,7 @@ remotes::install_github(paste0("flr/", c("FLCore", "ggplotFL", "FLFishery", "FLa
 
 The [mse](https://flr-project.org/mse) package allows setting up notifications of process on long computations through [progressr](https://progressr.futureverse.org/). You can request a progress bar to be shown for the calls to the `mp()`, `mps()` and `bootstrapSR` functions in this way
 
-```r
+```{r}
 library(progressr)
 handlers(global=TRUE)
 handlers("progress")
@@ -60,11 +69,11 @@ The number of cores to use should be chosen by considering the available memory.
 
 Once the repository has been cloned, only two steps are necessary to test run the example code, once `icesTAF` has been loaded:
 
-```r
+```{r}
 library(icesTAF)
 
 # RUN the repository bootstrap steps (data)
-taf.bootstrap()
+taf.boot()
 
 # SOURCE all R scripts in order
 make.all()
@@ -77,7 +86,7 @@ make.all()
 A new repository should contain the following folder and tree structure, which includes only initial data files, the corresponding `DATA.bib` file, a BibTeX file with relevant bibliographic references, and the scripts that will run the analysis. These are set based on the example dataset, sol.27.4, and will need to be adapted for a different stock.
 
 ```
-|-- bootstrap
+|-- boot
 |   |-- initial
 |   |   `-- data
 |   |       `-- sol274.rda  - Example input dataset
@@ -94,25 +103,28 @@ A new repository should contain the following folder and tree structure, which i
 
 ![](https://user-images.githubusercontent.com/1029847/249617706-e37724ad-f4a8-47d6-a481-c115cefd8b3b.png)
 
-## bootstrap/initial
+## boot/initial
 
 The essential inputs for the analysis include the result of the stock assessment model fit and the current set of reference points.
 
-For example, `bootstrap/initial/data/sol274.rda` contains the following objects:
+For example, `boot/initial/data/sol274.rda` contains the following objects:
 
 - `run`: The latest AAP stock assessment for sol.27.4 (WGNSSK 2023), as an object or class `FLStock`. The object does not reflect the WGNSSK 2023 sol.27.4 assessment, as it has been artificially depleted for demonstration purposes.
 
 - `refpts`: An object of class `FLPar` containing the reference points, biological and operational, calculated for this stock in the last benchmark (ICES, 2020).
 
-Uncertainty in past dynamics and initial conditions might have been already quantified, for example by employing the McMC sampling procedure available in the stock assessment model, by bootstrap of model inputs, or through a ensemble of model fits. If that is the case, the conditioning steps in `data.R` should be adapted accordingly. 
+Uncertainty in past dynamics and initial conditions might have been already quantified, for example by employing the McMC sampling procedure available in the stock assessment model, by boot of model inputs, or through a ensemble of model fits. If that is the case, the conditioning steps in `data.R` should be adapted accordingly. 
 
 # OM conditioning, `data.R`
 
+## Define stock-recruitment relationship {.tabset}
 From the stock assessment run, or a set of chosen ensemble runs, an operating model (OM) is to be constructed to evaluate the alternative advice rules by introducing some of the potential uncertainty in future dynamics, in this case in recruitment.
+The relationship can be computed ad-hoc from the available stock recruit pairs (option 1). Or if a relationship had already been defined , that one can be used (Option 2).
 
-First, one or multiple stock-recruitment relationships are fitted to the data, and then to bootstrapped series of the stock-recruits pairs, following the approach applied in ICES to category 1 stocks [@ICESrefpts_2022].
+### Option 1 (SRR object not already available) 
+In case of the former, first, one or multiple stock-recruitment relationships are fitted to the data, and then to bootstrapped series of the stock-recruits pairs, following the approach applied in ICES to category 1 stocks [@ICESrefpts_2022].
 
-```r
+```{r}
 fits <- srrTMB(as.FLSRs(run, models=c("bevholt", "segreg")), 
   spr0=mean(spr0y(run)))
 
@@ -120,58 +132,108 @@ srpars <- bootstrapSR(run, iters=it,
   models=c("bevholt", "segreg"), method="best")
 ```
 
-Models are fitted by the `r ``srrTMB` function in package [FLSRTNB](https://flr-project.org/FLSRTMB/), which employs steepness and virgin biomass formulations of the models but returns the converted parameters in the standard *a* and *b* parameters. The multiple stock-recruit relationships are combined into a meta-model, called `mixedsrr`, in which a third parameter (*m*) determines what model is applied on each iteration: 1 for Beverton & Holt, 2 for Ricker and 3 for segmented regression.
+Models are fitted by the `r` `srrTMB` function in package [FLSRTMB](https://flr-project.org/FLSRTMB/).
+This function employs steepness and virgin biomass formulations of the models but returns the converted parameters in the standard *a* and *b* parameters. 
+Multiple stock-recruit relationships are combined into a meta-model, called `mixedsrr`, in which a third parameter (*m*) determines what model is applied on each iteration: 1 for Beverton & Holt, 2 for Ricker and 3 for segmented regression.
 
+From the resulting model the srdevs can be computed from the srpars object:
+```{r}
+srdevs <- rlnormar1(sdlog=srpars$sigmaR, rho=srpars$rho, years=seq(dy, fy))
+```
+
+### Option 2 (SRR object already available) 
+Alternatively, when a stock-recruitment relationship has already been decided on for the stock, and is available as an FLSR srdevs need to be provided from the known values.
+```{r}
+srdevs <- rlnormar1(n=500, sdlog=0.5384, rho=0, years=seq(dy - 10, fy))
+```
+
+## {-}
+
+```{r plotsrdevs, eval = TRUE}
+include_graphics("report/om_deviances.png")
+```
+
+
+## Define OM {.tabset}
 An `FLom` object can now be assembled. This is the *FLR* representation of an operating model for a single stock and fishery, and contains all that is required for projecting the stock forward under different management regimes.
 
-```r
+### Option 1 (SRR object not already available) 
+When the stock-recruitment relationship is computed using `srrTMB`:
+```{r}
 om <- FLom(stock=propagate(run, it), refpts=refpts, model='mixedsrr',
   params=srpars, deviances=srdevs)
 ```
 
-This call builds the object with the initial population (*run*), propagated or replicated for the desired number of iterations (*it*), the matching biological reference points (*refpts*), the SRR to be applied and the set of parameters obtained from the bootstrap step (*model* and *params*), and the deviances to apply over the future recruitment estimates. These have been generated in this case following a log-normal distribution, with variance and autocorrelation computed from the bootstrap analysis.
+### Option 2 (SRR object already available) 
+When the relationship is defined otherwise:
+```{r}
+om <- FLom(stock=propagate(run, it), refpts=refpts, model='bevholtss3',
+  params=params(srr), deviances=srdevs)
 
-```r
-srdevs <- rlnormar1(sdlog=srpars$sigmaR, rho=srpars$rho, years=seq(dy, fy))
 ```
 
-```{r plotsrdevs}
-include_graphics("report/om_deviances.png")
-```
+
+## {-}
+
+
+This call to FLom builds the object with the initial population (*run*), propagated or replicated for the desired number of iterations (*it*), the matching biological reference points (*refpts*), the SRR to be applied and the set of parameters obtained from the bootstrap step (*model* and *params*), and the deviances to apply over the future recruitment estimates. These have been generated in this case following a log-normal distribution, with variance and autocorrelation computed from the bootstrap analysis.
 
 The OM can now be extended until the final year (*fy*). The default call to `fwdWindow()` sets both future biology (weights, maturity and natural mortality) and fishery dynamics (selectivity and discards ratio) to remain as the average of the last 3 years in the model run
 
-```r
+```{r}
 om <- fwdWindow(om, end=fy)
 ```
 
+## Alteration from default
+
 Other options exist for determining future values and patterns in any assumed quantity. For example, values can be resampled from a number of recent years, or different number of years can be used to compute the future average values. For example, this alternative call found the *trove.R* file, uses an averages of the last five years, except for weights-at-age, in stock, landings, discards and catch, which are instead resampled over the same period. Future values in the *om* object can also be modified directly.
 
-```r
+```{r}
 om <- fwdWindow(window(om, end=2023), end=fy, nsq=5,
   fun=c("mean", wt="sample"))
 ```
 
-The following MP runs do not include any error or bias in observations (catch and biological sampling), as a shortcut to the stock assessment is being used to obtain the stock status metrics. A full-feedback evaluation of an MP, in which the stock assessment or any status indicator is computed from catch, biology or survey data, an object of class `FLoem` can be constructed for this purpose. The class contains a method to be applied to observe the OM, add any specified error or bias, and merge those with past observations.
+The following MP runs do not include any error or bias in observations (catch and biological sampling), as a shortcut to the stock assessment is being used to obtain the stock status metrics. For a full-feedback evaluation of an MP, in which the stock assessment or any status indicator is computed from catch, biology or survey data, an object of class `FLoem` can be constructed for this purpose. The class contains a method to be applied to observe the OM, add any specified error or bias, and merge those with past observations.
 
-Implementation error can also be incorporated in the evaluation of MPs. An object is assembled containing the choice of implementation dynamics and the levels of error. An approximate 10% error in implementation can be added, for example, through a LN(0, 0.10) distribution as follows.
+Implementation error can also be incorporated in the evaluation of MPs. An object *iem* then needs to be assembled containing the choice of implementation dynamics and the levels of error. An approximate 10% error in implementation can be added, for example, through a LN(0, 0.10) distribution as follows.
 
-```r
+```{r}
 iem <- FLiem(method=noise.iem,
   args=list(noise=rlnorm(500, rec(om) %=% 0, 0.1)))
 ```
 
+In the scripts provided with the directory, instead of a full-feedback evaluation, a shortcut is taken. Process error is added to the last 10 years of the om, and a F and SSB deviances are added manually.
 
-# Evaluation of recovery rules, `model.R`
+```{r}
+# HINDCAST for last 10 years /w process error and recruitment deviances
+om <- pefwd(om, catch=catch(om)[, ac(2014:2023)], sr=rec(om)[, ac(2014:2023)], deviances = srdevs)
+
+# SETUP om future: average of last 3 years **
+om <- fwdWindow(om, end=fy)
+
+# PROJECT forward for iy assumption (TAC) **
+om <- fwd(om, catch=FLQuant(3675, dimnames=list(year=2024)))
+
+# ADD constant F
+om <- fwd(om, fbar=expand(fbar(run)[,'2023'], year=2024))
+
+# CREATE F and SSB deviances
+sdevs <- shortcut_devs(om, Fcv=0.212, Fphi=0.423, SSBcv=0.10)
+
+```
+
+
+
+# Evaluation of management rules, `model.R`
 
 To construct a baseline level for comparing the candidate recovery procedures, a projection under a full fishery closure ($\bar{F} = 0$) can be carried out.
 
-```r
+```{r}
 runf0 <- fwd(om, control=fwdControl(year=seq(2024, 2042), quant="fbar",
   value=0))
 ```
 
-```{r plotrunf0, echo=FALSE, eval=TRUE}
+```{r plotrunf0, eval = TRUE}
 include_graphics("report/run_f0.png")
 ```
 
@@ -185,7 +247,7 @@ Recovery rules, or any other management procedure (MP), are composed of a number
 
 These three steps are specified in a control structure, as follows:
 
-```r
+```{r}
 arule <- mpCtrl(list(
   # shortcut.sa + SSBdevs
   est = mseCtrl(method=shortcut.sa,
@@ -201,72 +263,40 @@ arule <- mpCtrl(list(
 
 This `mpCtrl` object implements the ICES advice rule with biomass trigger and F target levels taken from the *eqsim*-based calculations of the last benchmark for this stock. 
 
-```{r advicerule}
+```{r advicerule, eval = TRUE}
 include_graphics("report/advice_hcr.png")
 ```
 
 Applying the MP specified by such a control structure requires a call to the *mp()* function with the OM, OEM and control objects as main arguments. Only one extra argument is required, a list containing at least the starting year of the simulation (*iy*). By default the simulation will run to the last year of the 'om' object (*fy*), on an annual basis (*frq*), and with one year of lag in both data (*data_lag*) and decision implementation (*management_lag*). Running an MP that sets advice for a three-year period, for example, only requires passing the corresponding value in the list, `r  list(iy=2023, frq=3)`.
 
-```r
+```{r}
 mseargs <- list(iy=2023, fy=2042, data_lag=1, management_lag=1, frq=1)
 ```
 
-We now proceed to run the MP applying on the ICES advice rule and a shortcut approach to the stock assessment.
+We now proceed to run the MP applying on the ICES advice rule and the shortcut approach to the stock assessment.
 
-```r
-advice <- mp(om, iem=iem, ctrl=arule, args=mseargs)
+```{r}
+advice <- mp(om, ctrl=arule, args=mseargs)
 ```
 
 The result of a call to *mp()* is returned as an object of class `FLmse`, which contains the projected OM, the `mpCtrl` (*control*), argument list (*args*) and OEM (*oem*) objects used for it, and an array that reports on the decisions made and values applied at every step (*tracking*). For example, the OM biomass (*SB.om*), the estimate of it used by the HCR (*met.hcr*), the decision taken by the hcr (*decision.hcr*, 1, 2 and 3 for each section of the hockeystick), the output of the HCR (*hcr*), the $\bar{F}$ value used in the short-term forecast (*fbar.isys*), and the catch advice obtained (*isys*).
 
+For the purpose of figuring out whether there is a difference between applying the management procedure on a yearly basis, biannually, triannually or any other frequency, one can run with alternative advice frequencies (1, 2, 3, 5) using `future_lapply` from the `future.apply` package 
+
+```{r}
+library(future.apply)
+
+system.time(
+runs <- FLmses(future_lapply(setNames(nm=c(1, 2, 3, 5)), function(x)
+  mp(om, ctrl=arule, args=list(iy=2024, fy=2050, frq=x), parallel=FALSE)))
+)
+
+```
+The returned object is a `FLmses` class object; a list of `FLmse` objects. 
+
+
 ```{r, echo=FALSE}
 load("model/model.rda")
-```
-
-
-```
-An object of class "FLQuant"
-iters:  500
-
-, , unit = unique, season = all, area = unique
-
-              year
-metric         2024                 2025                 2026
-  SB.om        2.8064e+04(6.54e+03) 3.8823e+04(1.23e+04) 5.0709e+04(1.68e+04)
-  met.hcr      2.8284e+04(7.25e+03) 3.8673e+04(1.28e+04) 5.0080e+04(1.71e+04)
-  decision.hcr 2.0000e+00(0.00e+00) 2.0000e+00(0.00e+00) 2.0000e+00(0.00e+00)
-  hcr          1.7942e-02(2.02e-02) 2.3047e-02(1.89e-02) 7.5158e-02(6.58e-02)
-  fbar.isys    1.7230e-02(2.04e-02) 2.1875e-02(1.89e-02) 7.4639e-02(6.79e-02)
-  isys         6.5769e+02(7.74e+02) 1.1701e+03(9.96e+02) 4.8128e+03(4.72e+03)
-
-units:  NA
-```
-
-A set of runs can now be conducted in which the standard advice rule is modified in various ways. For example, a range of values are explored for the *lim* argument: the level of the input metric (SSB in this case) at which the output (F) is set to the *min* value. Five between 0 and the value of *Blim* for sol.27.4 were chosen in this example. To run these alternative MPs, the 'mps' function takes the same arguments as a call for a single MP, but also a list of alternative values for one of more of the HCR arguments, for example
-
-```r
-limopts <- mps(om, ctrl=arule, args=mseargs,
-  hcr=list(lim=seq(0, c(refpts(om)$Blim), length=5)))
-```
-
-Combinations of alternative arguments can be specified more easily by calling the `combinations` function, for example
-
-```r
-opts <- combinations(
-  lim=seq(0, c(refpts(om)$Btrigger) * 0.50, length=3),
-  min=c(0, 0.05))
-```
-
-This list can now be used in the call to `mps()` to evaluate the resulting six MPs.
-
-```r
-plans <- mps(om, ctrl=arule, args=mseargs, hcr=opts)
-```
-
-The returned object is a list containing one `FLmse` object for each alternative HCR formulation, which we can plot preceded by the OM
-
-```{r plotplans}
-include_graphics("report/plans.png")
 ```
 
 # Computing and summarizing performance, `output.R`
@@ -277,16 +307,15 @@ Two sets of statistics with potential relevance to ICES have been defined in `ut
 
 - *PBlim*, the probability that spawner biomass is above $B_{lim}$.
 - *PBtrigger*, the probability that spawner biomass is above $B_{trigger}$.
-- *C*, Mean catch per year.
+- *Cy*, Mean catch per year.
 - *cvC*, CV of catch per year.
 
-Others are to be calculated for a period, or different periods, of years, which are specified in the call to `performance()`. Those currently defined are:
+The others, thought (`r ``fullstats`) are to be calculated for a period, or different periods, of years, which are specified in the call to `performance()`. Those currently defined are:
  
 - *C*, Mean catch over years.
 - *AVVC*, Average annual variability in catch.
 - *IACC*, Percentage inter-annual change in catch.
 - *risk2*, ICES Risk 2, probability that spawner biomass is above $B_{lim}$ once.
-- *firstyear*, First year in which $P(B/B_{lim}) >= 0.95$.
 
 A number of performance statistics are available in the `mse` package, each of them defined by formula, a name and a description.
 
@@ -300,29 +329,20 @@ statistics$risk2
 
 Performance across all MP runs can be computed by specifying what statistics to use and over what time period. The *years* argument can set as a vector
 
-```
-> performance(c(plans, F0=runf0), statistics=annualstats, years=2023:2041)
-
-   mp    statistic year data     iter name    desc
-1: hcr_1 C         2023 4289.200 1    mean(C) Mean catch per year
-2: hcr_1 C         2024 3590.629 1    mean(C) Mean catch per year
-3: hcr_1 C         2025 5138.519 1    mean(C) Mean catch per year
----
-```
-
-in which case the statistics are computed annually. Or it could be of class *list*, and the statistics will be applied over the whole period or periods
+```{r}
+performance(runs) <- rbind(
+  # annual
+  performance(runs, statistics=annualstats, years=2024:2042),
+  # by period
+  performance(runs, statistics=fullstats, years=all=2024:2042))
 
 ```
-> performance(c(plans, F0=runf0), statistics=fullstats,
-+   years=list(short=2023:2026, long=2023:2041))
-   mp    statistic  year  data      iter name   desc
-1: hcr_1 AAVC       long  2.278e-01 1    AAV(C) Average annual variability
-2: hcr_1 AAVC       long  1.619e-01 2    AAV(C) Average annual variability
-3: hcr_1 AAVC       long  1.697e-01 3    AAV(C) Average annual variability
----
-```
 
-Note how the initial projection with no catches, *runF0*, gets added to the set of MPs being compared.
+in which case the statistics are computed annually, and for the entire period. Or it could be of class *list*, and the statistics will be applied over the whole period or periods
+
+```{r}
+performance(runs, statistics=fullstats, years=list(short=2024:2030, long=2024:2042))
+```
 
 Additional performance statistics can be defined as a list containing a formula to compute it, a name, and a description. Formulas can make use or existing or new functions, and refer to either *metrics*, functions that return summary values computed from the OM, or the names of reference points stored in the *refpts* slot. For example, the *risk1* statistics is defined by the formula 
 `~yearMeans(iterMeans((SB/SBlim) < 1))`, where `SB` refers to the metric defined to call the `ssb` method, while `SBlim` is one of the reference points defined in the `FLom` object.
@@ -331,13 +351,13 @@ Additional performance statistics can be defined as a list containing a formula 
 
 A number of plot functions are available in the [mseviz](https://flr-project.org/mseviz) package for displaying and comparing the results of the MP runs and the performance statistics. For example boxplots of each multi-annual performance metric by MP can be displayed by calling
 
-```{r plotbps}
+```{r plotbps, eval = TRUE}
 include_graphics("report/perf_bps.png")
 ```
 
 The `plotOMruns` function present a time series of a single metric (e.g. `ssb`) for the OM, in the top panel, and the various MPs below it.
 
-```{r plotssbruns}
+```{r plotssbruns, eval = TRUE}
 include_graphics("report/onruns.png")
 ```
 
@@ -348,7 +368,7 @@ A number of functions are currently defined in the `utilities.R` file. any funct
 - *icesmetrics*, a list of relative metrics over ICES reference points.
 - *annualstats*, a list of performance statistics to compute yearly.
 - *fullstats*, a list of performance statistics to compute over years.
-- *firstYear*, a function to compute the first year in which a relative statistic gets to 1.
+- *pefwd*, a function to add process error to the a number of years in the om.   
 
 # Alternative steps, `trove.R`
 
@@ -358,9 +378,9 @@ For a number of steps shown in the example analysis, alternatives already exist 
 
 Once an analysis is running, the mechanisms of TAF should be used to keep track of what package versions were used. This ensures the reproducibility of the whole analysis.
 
-If packages have been installed from the [FLR github](https://github.com/flr) repositories, the `bootstrap/SOFTWARE.bib` file storing all version info can be created by calling
+If packages have been installed from the [FLR github](https://github.com/flr) repositories, the `boot/SOFTWARE.bib` file storing all version info can be created by calling
 
-```r
+```{r}
 flrpkgs <- c("FLCore", "FLFishery", "FLasher", "mse", "ggplotFL",
   "mseviz", "FLSRTMB")
 
@@ -369,7 +389,7 @@ icesTAF::draft.software(flrpkgs, file=TRUE)
 
 If packages have been installed from [r-universe](https://flr.r-universe.dev), we can add the version information using the following (experimental) code.
 
-```r
+```{r}
 
 flrpkgs <- c("FLCore", "FLFishery", "FLasher", "mse", "ggplotFL",
   "mseviz", "FLSRTMB")
@@ -387,7 +407,7 @@ file <- file.path(boot.dir(), "SOFTWARE.bib")
 write(unlist(bib), file=file, append=FALSE)
 ```
 
-The `SOFTWARE.bib` file now contains the github commit references to the package versions that were installed via the [FLR r-universe](https://flr.r-universe.dev) repository. A call to `icesTAF::taf.bootstrap(software=TRUE)` would download and install those precise versions in the `bootstrap` folder. The file will also be used by the TAF server in ICES to use the same versions when running the code.
+The `SOFTWARE.bib` file now contains the github commit references to the package versions that were installed via the [FLR r-universe](https://flr.r-universe.dev) repository. A call to `icesTAF::taf.boot(software=TRUE)` would download and install those precise versions in the `boot` folder. The file will also be used by the TAF server in ICES to use the same versions when running the code.
 
 # Asking for help
 

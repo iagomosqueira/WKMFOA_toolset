@@ -23,9 +23,10 @@ load("model/model.rda")
 
 tables <- list()
 perf <- performance(runs)
+unique(perf$statistic)
 
 # IS P(SB < Blim) > 0.95 in any year?
-
+perf[statistic == 'PBlim',]
 perf[statistic == 'PBlim', .(PBlim=max(data)), by=.(mp)]
 
 # WHAT are the yearly average catch levels?
