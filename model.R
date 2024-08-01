@@ -16,7 +16,9 @@ library(mse)
 plan(multisession, workers=4)
 
 # LOAD oem and oem
-load('data/data.rda')
+load('data/data.rda', verbose = TRUE)
+
+sr(om)
 
 # - SET UP MP runs
 
@@ -43,7 +45,7 @@ arule <- mpCtrl(list(
 # plot HCR
 plot_hockeystick.hcr(arule$hcr, labels=c(lim="Blim", trigger="MSYBtrigger",
   min="", target="Ftarget")) +
-  xlab(expression(hat(SSB))) + ylab(expression(bar(F)))
+  xlab(expression(hat(SSB))) + ylab(expression(bar(F)))+theme_bw()
 
 # - RUN applying ICES advice rule
 system.time(

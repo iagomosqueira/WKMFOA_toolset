@@ -82,41 +82,54 @@ pefwd <- function(object, catch=NULL, fbar = NULL, deviances = NULL, sr = NULL  
   hiny <- dims(catch)$minyear; print(paste0("hiny = ", hiny))
 
   # DETERMINISTIC SEQUENTIAL hindcast with process error (perr) added ----
-      # COMPUTE process error, e = y/(x exp(-z)) all ages except recruitment.
-      perr <- stock.n(stock)[-1, ac(hiny:dy)]/(stock.n(stock)[-nages, ac(hiny:dy-1)] * 
-                  exp(-z(stock)[-nages, ac(hiny:dy-1)]))
+      # COMPUTE process error, e = y+t/(y exp(-z_in_y)) across all ages except recruitment.
+      expected_n_at_age <- (stock.n(stock)[-nages, ac(hiny:dy-1)] * exp(-z(stock)[-nages, ac(hiny:dy-1)]))
+      observed_n_at_age <- stock.n(stock)[-1, ac(hiny:dy)]
+
+      perr <- observed_n_at_age / expected_n_at_age
+      
+      #correct plusgroup
       perr[ac(dims(stock)$max), ] <- stock.n(stock)[nages, ac(hiny:dy)]/(quantSums(stock.n(stock)[(nages-1):nages, ac(hiny:dy -1)] *
                                        exp(-z(stock)[(nages-1):nages, ac(hiny:dy -1)])))
       
-      dhind_perr <- om
-      # The process error is the right one for the first year, but afterwards it needs to be 
+      dhind_perr <- stock
+      
+      # The process error is the right one for the first year, but now needs to be 
       # recalculated as the numbers at ages in years are corrected, so the population in year
       # y included process error.
       perry <- perr
+      #print("Process error recalculation ---------")
 
       for(Y in hiny:dy) {
 
         # FWD(catch[y])
-        dhind_perr <- fwd(dhind_perr, sr=sr, f=fbar(om)[, ac(Y)])
+        
+        #print(paste0("Fbar in ", Y, "= ",(as.numeric(fbar(stock)[, ac(Y)])[1])))
+        dhind_perr <- fwd(dhind_perr, sr=rec(stock), f=fbar(stock)[, ac(Y)]) # no deviances in this case added by Dorleta, so the process error will not rely on deviations in recruitment
 
         stock.n(dhind_perr)[-1, ac(Y)] <- stock.n(dhind_perr)[-1, ac(Y)]*perry[, ac(Y)] 
-
+        
+        #print(stock.n(dhind_perr)[,ac(hiny:dy)] / stock.n(stock)[,ac(hiny:dy)]) #should be the same since no deviances added here
+        
         # perr for next year
         if(Y < dy){
           # all ages minus recruitment
-          perry[,ac(Y+1)] <- stock.n(stock)[-1, ac(Y+1)]/(stock.n(dhind_perr)[-nages, ac(Y)] * exp(-z(dhind_perr@stock)[-nages, ac(Y)]))
+          expected_n_at_age_nextY <- (stock.n(dhind_perr)[-nages, ac(Y)] * exp(-z(dhind_perr)[-nages, ac(Y)]))
+          observed_n_at_age_nextY <- stock.n(stock)[-1, ac(Y+1)]
+
+          perry[,ac(Y+1)] <- observed_n_at_age_nextY/expected_n_at_age_nextY
           # correct plusgroup
           perry[ac(dims(stock)$max),ac(Y+1)] <- stock.n(stock)[nages, ac(Y+1)]/(quantSums(stock.n(dhind_perr)[(nages-1):nages, ac(Y)] *
-                                                                        exp(-z(dhind_perr@stock)[(nages-1):nages, ac(Y)])))
+                                                                        exp(-z(dhind_perr)[(nages-1):nages, ac(Y)])))
         }
-         print(Y)
+         
 
       }
 
   # STOCHASTIC SEQUENTIAL hindcast with process error (perr) added ----
 
       # Stochastic recruitment + Process error with lognormal deviations
-      hind_perr_log     <- om@stock
+      hind_perr_log     <- stock
 
       for(YY in seq(hiny,dy)) {
       

@@ -63,22 +63,25 @@ plot(srdevs) +
 om <- FLom(stock=propagate(run, it), refpts=refpts, model='bevholtss3',
   params=params(srr), deviances=srdevs)
 
-# HINDCAST for last 10 years /without process error
-# om <- fwd(om, catch=catch(om)[, ac(2014:2023)], sr=rec(om)[, ac(2014:2023)])
+# This following section differs for the type of assessment the stock is run with ----
+  # HINDCAST for last 10 years /without process error (for stocks using SS3 and similar)
+  om <- fwd(om, catch=catch(om)[, ac(dy-10:dy)], sr=rec(om)[, ac(dy-10:dy)])
 
-# HINDCAST for last 10 years /w process error and recruitment deviances
-om <- pefwd(om, catch=catch(om)[, ac(2014:2023)], sr=rec(om)[, ac(2014:2023)], deviances = srdevs)
+  # HINDCAST for last 10 years /w process error and recruitment deviances (for stocks using SAM)
+  om <- pefwd(om, catch=catch(om)[, ac(dy-10:dy)], sr=rec(om)[, ac(dy-10:dy)], deviances = srdevs)
+
+# Continue here ----
 
 # SETUP om future: average of last 3 years **
 om <- fwdWindow(om, end=fy)
 
 # PROJECT forward for iy assumption (TAC) **
-om <- fwd(om, catch=FLQuant(3675, dimnames=list(year=2024)))
+om <- fwd(om, catch=FLQuant(3675, dimnames=list(year=iy)))
 
 # TODO: ADD constant F
-om <- fwd(om, fbar=expand(fbar(run)[,'2023'], year=2024))
+om <- fwd(om, fbar=expand(fbar(run)[,ac(dy)], year=iy))
 
-# CREATE F and SSB deviances
+# CREATE F and SSB deviances 
 sdevs <- shortcut_devs(om, Fcv=0.212, Fphi=0.423, SSBcv=0.10)
 
 # - SAVE
